@@ -5,6 +5,7 @@ use crate::bindings::{
     ngx_uint_t,
     ngx_chain_t,
     ngx_pool_t,
+    ngx_connection_t,
     ngx_http_request_t,
     off_t,
     ngx_http_discard_request_body,
@@ -48,6 +49,10 @@ impl Request {
 
     pub fn pool(&self) -> *mut ngx_pool_t {
         unsafe { (*self.0).pool }
+    }
+
+    pub fn connection(&self) -> *mut ngx_connection_t {
+        unsafe { (*self.0).connection }
     }
 
     pub fn discard_request_body(&mut self) -> Status
