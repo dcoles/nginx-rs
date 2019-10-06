@@ -1,0 +1,13 @@
+[package]
+name = "hello-rs"
+version = "0.1.0"
+authors = ["David Coles <coles.david@gmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+
+[build-dependencies]
+bindgen = "0.51"
