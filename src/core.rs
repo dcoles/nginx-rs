@@ -32,7 +32,7 @@ impl Buffer {
         }
     }
 
-    pub fn set_static_str(&mut self, str: &str) {
+    pub fn set_static_str(&mut self, str: &'static str) {
         let pos = str.as_ptr();
         let last = unsafe { pos.offset(str.len() as isize) };
 
