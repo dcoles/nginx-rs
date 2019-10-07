@@ -1,18 +1,4 @@
-use crate::bindings::{
-    NGX_HTTP_OK,
-    NGX_HTTP_INTERNAL_SERVER_ERROR,
-    ngx_int_t,
-    ngx_uint_t,
-    ngx_chain_t,
-    ngx_pool_t,
-    ngx_connection_t,
-    ngx_http_request_t,
-    off_t,
-    ngx_http_discard_request_body,
-    ngx_http_output_filter,
-    ngx_http_send_header,
-};
-
+use crate::bindings::*;
 use crate::core::Status;
 
 #[macro_export]
@@ -35,6 +21,7 @@ impl Into<Status> for HTTPStatus {
 
 pub const HTTP_OK: HTTPStatus = HTTPStatus(NGX_HTTP_OK as ngx_uint_t);
 pub const HTTP_INTERNAL_SERVER_ERROR: HTTPStatus = HTTPStatus(NGX_HTTP_INTERNAL_SERVER_ERROR as ngx_uint_t);
+pub const HTTP_FORBIDDEN: HTTPStatus = HTTPStatus(NGX_HTTP_FORBIDDEN as ngx_uint_t);
 
 pub struct Request(*mut ngx_http_request_t);
 
@@ -58,6 +45,10 @@ impl Request {
     pub fn discard_request_body(&mut self) -> Status
     {
         Status(unsafe { ngx_http_discard_request_body(self.0) })
+    }
+
+    pub fn user_agent(&mut self) -> String {
+        unsafe { (*(*self.0).headers_in.user_agent).value.to_string() }
     }
 
     pub fn set_status(&mut self, status: HTTPStatus) {
