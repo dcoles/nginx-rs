@@ -1,11 +1,11 @@
-mod bindings;
-mod core;
+pub mod bindings;
+pub mod core;
 
 #[macro_use]
-mod log;
+pub mod log;
 
 #[macro_use]
-mod http;
+pub mod http;
 
 use crate::bindings::*;
 use crate::core::*;
@@ -43,13 +43,11 @@ fn hello_world_handler(request: &mut Request) -> Status {
         return status;
     }
 
-    let mut buf = match calloc_buf(request.pool()) {
+    // Send body
+    let mut buf = match Buffer::create_from_static_str(request.pool(), HELLO_WORLD) {
         Some(buf) => buf,
         None => return ERROR,
     };
-
-    // Send body
-    buf.set_static_str(HELLO_WORLD);
     buf.set_last_buf(request.is_main());
     buf.set_last_in_chain(true);
 
