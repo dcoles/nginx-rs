@@ -34,7 +34,7 @@ fn hello_world_handler(request: &mut Request) -> Status {
     }
 
     // Create body
-    let body = format!("Hello, {}!", request.user_agent());
+    let body = format!("Hello, {}!\n", request.user_agent());
 
     // Send header
     request.set_status(HTTP_OK);
