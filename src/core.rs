@@ -1,6 +1,6 @@
 use crate::bindings::*;
 
-use std::slice;
+use std::{slice, ptr};
 use std::str;
 use std::mem;
 
@@ -48,6 +48,33 @@ impl Buffer {
         buf.set_memory(true);
 
         Some(buf)
+    }
+
+    pub fn create_from_str(pool: *mut ngx_pool_t, str: &str) -> Option<Buffer>
+    {
+        let mut buf = Buffer::create_temp(pool, str.len())?;
+        unsafe {
+            ptr::copy_nonoverlapping(str.as_ptr(), buf.pos_mut(), str.len());
+            let last = buf.pos_mut().offset(str.len() as isize);
+            buf.set_last(last);
+        }
+        Some(buf)
+    }
+
+    pub fn start_mut(&mut self) -> *mut u8 {
+        unsafe { (*self.0).start }
+    }
+
+    pub fn pos_mut(&mut self) -> *mut u8 {
+        unsafe { (*self.0).pos }
+    }
+
+    pub fn last_mut(&mut self) -> *mut u8 {
+        unsafe { (*self.0).last }
+    }
+
+    pub fn end_mut(&mut self) -> *mut u8 {
+        unsafe { (*self.0).end }
     }
 
     fn set_start(&mut self, start: *const u8) {

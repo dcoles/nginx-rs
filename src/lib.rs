@@ -13,8 +13,6 @@ use crate::http::*;
 
 use std::ptr;
 
-const HELLO_WORLD: &str = "Hello, world!\n";
-
 extern_http_request_handler!(ngx_http_hello_world_access_handler, access_handler);
 
 fn access_handler(request: &mut Request) -> Status {
@@ -35,16 +33,19 @@ fn hello_world_handler(request: &mut Request) -> Status {
         return HTTP_INTERNAL_SERVER_ERROR.into();
     }
 
+    // Create body
+    let body = format!("Hello, {}!", request.user_agent());
+
     // Send header
     request.set_status(HTTP_OK);
-    request.set_content_length_n(HELLO_WORLD.len());
+    request.set_content_length_n(body.len());
     let status = request.send_header();
     if status == ERROR || status > OK || request.set_header_only() {
         return status;
     }
 
     // Send body
-    let mut buf = match Buffer::create_from_static_str(request.pool(), HELLO_WORLD) {
+    let mut buf = match Buffer::create_from_str(request.pool(), &body) {
         Some(buf) => buf,
         None => return ERROR,
     };
