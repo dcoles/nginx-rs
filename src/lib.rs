@@ -49,6 +49,7 @@ fn hello_world_handler(request: &mut Request) -> Status {
         Some(buf) => buf,
         None => return ERROR,
     };
+    assert!(&buf.as_bytes()[..7] == b"Hello, ");
     buf.set_last_buf(request.is_main());
     buf.set_last_in_chain(true);
 

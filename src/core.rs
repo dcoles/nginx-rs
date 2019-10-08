@@ -38,13 +38,16 @@ impl Buffer {
         }
 
         let mut buf = Buffer(buf);
-        let start = str.as_ptr();
+        // We cast away cost, but buffers with the memory flag are read-only
+        let start = str.as_ptr() as *mut u8;
         let end = unsafe { start.offset(str.len() as isize) };
 
-        buf.set_start(start);
-        buf.set_pos(start);
-        buf.set_last(end);
-        buf.set_end(end);
+        unsafe {
+            (*buf.0).start = start;
+            (*buf.0).pos = start;
+            (*buf.0).last = end;
+            (*buf.0).end = end;
+        }
         buf.set_memory(true);
 
         Some(buf)
@@ -54,50 +57,39 @@ impl Buffer {
     {
         let mut buf = Buffer::create_temp(pool, str.len())?;
         unsafe {
-            ptr::copy_nonoverlapping(str.as_ptr(), buf.pos_mut(), str.len());
-            let last = buf.pos_mut().offset(str.len() as isize);
-            buf.set_last(last);
+            ptr::copy_nonoverlapping(str.as_ptr(), (*buf.0).pos, str.len());
+            (*buf.0).last = (*buf.0).pos.offset(str.len() as isize);
         }
         Some(buf)
     }
 
-    pub fn start_mut(&mut self) -> *mut u8 {
-        unsafe { (*self.0).start }
+    pub fn as_bytes(&self) -> &[u8] {
+        unsafe { slice::from_raw_parts((*self.0).pos, self.len()) }
     }
 
-    pub fn pos_mut(&mut self) -> *mut u8 {
-        unsafe { (*self.0).pos }
+    pub fn as_bytes_mut(&self) -> &mut [u8] {
+        assert!(!self.is_memory());
+        unsafe { slice::from_raw_parts_mut((*self.0).pos, self.len()) }
     }
 
-    pub fn last_mut(&mut self) -> *mut u8 {
-        unsafe { (*self.0).last }
-    }
-
-    pub fn end_mut(&mut self) -> *mut u8 {
-        unsafe { (*self.0).end }
-    }
-
-    fn set_start(&mut self, start: *const u8) {
+    pub fn len(&self) -> usize {
         unsafe {
-            (*self.0).start = start as *mut u8;
+            let pos = (*self.0).pos;
+            let last = (*self.0).last;
+            assert!(last > pos);
+            usize::wrapping_sub(last as _, pos as _)
         }
     }
 
-    fn set_pos(&mut self, pos: *const u8) {
+    pub fn is_memory(&self) -> bool {
         unsafe {
-            (*self.0).pos = pos as *mut u8;
+            (*self.0).memory() != 0
         }
     }
 
-    fn set_last(&mut self, last: *const u8) {
+    pub fn is_temporary(&self) -> bool {
         unsafe {
-            (*self.0).last = last as *mut u8;
-        }
-    }
-
-    fn set_end(&mut self, end: *const u8) {
-        unsafe {
-            (*self.0).end = end as *mut u8;
+            (*self.0).temporary() != 0
         }
     }
 
