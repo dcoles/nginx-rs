@@ -6,7 +6,7 @@ macro_rules! extern_http_request_handler {
     ( $x: ident, $y: ident ) => {
         #[no_mangle]
         pub extern fn $x(r: *mut ngx_http_request_t) -> ngx_int_t {
-            $y(&mut http::Request::new(r)).0
+            $y(&mut $crate::http::Request::from_ngx_http_request(r)).0
         }
     };
 }
@@ -26,7 +26,7 @@ pub const HTTP_FORBIDDEN: HTTPStatus = HTTPStatus(NGX_HTTP_FORBIDDEN as ngx_uint
 pub struct Request(*mut ngx_http_request_t);
 
 impl Request {
-    pub fn new(r: *mut ngx_http_request_t) -> Request {
+    pub fn from_ngx_http_request(r: *mut ngx_http_request_t) -> Request {
         Request(r)
     }
 
