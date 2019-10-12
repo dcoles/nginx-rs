@@ -45,7 +45,7 @@ fn hello_world_handler(request: &mut Request) -> Status {
     }
 
     // Send body
-    let mut buf = match Buffer::create_from_str(request.pool(), &body) {
+    let mut buf = match TemporaryBuffer::create_from_str(request.pool(), &body) {
         Some(buf) => buf,
         None => return ERROR,
     };
@@ -53,7 +53,7 @@ fn hello_world_handler(request: &mut Request) -> Status {
     buf.set_last_buf(request.is_main());
     buf.set_last_in_chain(true);
 
-    let mut out = ngx_chain_t { buf: buf.0, next: ptr::null_mut() };
+    let mut out = ngx_chain_t { buf: buf.as_ngx_buf_mut(), next: ptr::null_mut() };
     request.output_filter(&mut out)
 }
 
