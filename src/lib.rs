@@ -13,10 +13,22 @@ use crate::http::*;
 
 use std::ptr;
 
+struct LocationConf(*mut ngx_http_hello_world_loc_conf_t);
+
+impl LocationConf {
+    fn from_request(request: &Request) -> LocationConf {
+        LocationConf(unsafe { request.get_module_loc_conf(&ngx_http_hello_world_module) as *mut ngx_http_hello_world_loc_conf_t })
+    }
+
+    fn text(&self) -> &ngx_str_t {
+        unsafe { &(*self.0).text }
+    }
+}
+
 extern_http_request_handler!(ngx_http_hello_world_access_handler, access_handler);
 
 fn access_handler(request: &mut Request) -> Status {
-    if request.user_agent().contains("curl") {
+    if request.user_agent().to_str().contains("curl") {
         return HTTP_FORBIDDEN.into();
     }
 
@@ -33,8 +45,10 @@ fn hello_world_handler(request: &mut Request) -> Status {
         return HTTP_INTERNAL_SERVER_ERROR.into();
     }
 
+    let hlcf = LocationConf::from_request(&request);
+
     // Create body
-    let body = format!("Hello, {}!\n", request.user_agent());
+    let body = format!("Hello, {}!\n", if hlcf.text().is_empty() { request.user_agent().to_str() } else { hlcf.text().to_str() });
 
     // Send header
     request.set_status(HTTP_OK);
@@ -45,7 +59,7 @@ fn hello_world_handler(request: &mut Request) -> Status {
     }
 
     // Send body
-    let mut buf = match TemporaryBuffer::create_from_str(request.pool(), &body) {
+    let mut buf = match request.pool().create_buffer_from_str(&body) {
         Some(buf) => buf,
         None => return ERROR,
     };

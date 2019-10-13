@@ -20,7 +20,7 @@ fn main() {
         .layout_tests(false)
         .whitelist_type("ngx_.*")
         .whitelist_function("ngx_.*")
-        .whitelist_var("NGX_.*|nginx_.*")
+        .whitelist_var("NGX_.*|ngx_.*|nginx_.*")
         .clang_arg(format!("-I{}/src/core", nginx_dir))
         .clang_arg(format!("-I{}/src/event", nginx_dir))
         .clang_arg(format!("-I{}/src/event/modules", nginx_dir))

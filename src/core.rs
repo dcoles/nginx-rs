@@ -17,6 +17,64 @@ impl Status {
     }
 }
 
+pub struct Pool(*mut ngx_pool_t);
+
+impl Pool {
+    pub fn from_ngx_pool(pool: *mut ngx_pool_t) -> Pool {
+        Pool(pool)
+    }
+
+    pub fn create_buffer(&mut self, size: usize) -> Option<TemporaryBuffer> {
+        assert!(!self.0.is_null());
+        let buf = unsafe { ngx_create_temp_buf(self.0, size) };
+        if buf.is_null() {
+            return None;
+        }
+
+        Some(TemporaryBuffer(buf))
+    }
+
+    pub fn create_buffer_from_str(&mut self, str: &str) -> Option<TemporaryBuffer>
+    {
+        let mut buf = self.create_buffer(str.len())?;
+        unsafe {
+            ptr::copy_nonoverlapping(str.as_ptr(), (*buf.0).pos, str.len());
+            (*buf.0).last = (*buf.0).pos.offset(str.len() as isize);
+        }
+        Some(buf)
+    }
+
+    pub fn create_buffer_from_static_str(&mut self, str: &'static str) -> Option<MemoryBuffer> {
+        assert!(!self.0.is_null());
+        let buf = unsafe { self.ngx_calloc_buf() };
+        if buf.is_null() {
+            return None;
+        }
+
+        // We cast away const, but buffers with the memory flag are read-only
+        let start = str.as_ptr() as *mut u8;
+        let end = unsafe { start.offset(str.len() as isize) };
+
+        unsafe {
+            (*buf).start = start;
+            (*buf).pos = start;
+            (*buf).last = end;
+            (*buf).end = end;
+            (*buf).set_memory(1);
+        }
+
+        Some(MemoryBuffer(buf))
+    }
+
+    unsafe fn ngx_alloc_buf(&mut self) -> *mut ngx_buf_t {
+        ngx_palloc(self.0, mem::size_of::<ngx_buf_t>()) as *mut ngx_buf_t
+    }
+
+    unsafe fn ngx_calloc_buf(&mut self) -> *mut ngx_buf_t {
+        ngx_pcalloc(self.0, mem::size_of::<ngx_buf_t>()) as *mut ngx_buf_t
+    }
+}
+
 pub trait Buffer {
     fn as_ngx_buf(&self) -> *const ngx_buf_t;
 
@@ -38,26 +96,6 @@ pub trait MutableBuffer: Buffer {
 pub struct TemporaryBuffer(*mut ngx_buf_t);
 
 impl TemporaryBuffer {
-    pub fn create_temp(pool: *mut ngx_pool_t, size: usize) -> Option<TemporaryBuffer> {
-        assert!(!pool.is_null());
-        let buf = unsafe { ngx_create_temp_buf(pool, size) };
-        if buf.is_null() {
-            return None;
-        }
-
-        Some(TemporaryBuffer(buf))
-    }
-
-    pub fn create_from_str(pool: *mut ngx_pool_t, str: &str) -> Option<TemporaryBuffer>
-    {
-        let mut buf = TemporaryBuffer::create_temp(pool, str.len())?;
-        unsafe {
-            ptr::copy_nonoverlapping(str.as_ptr(), (*buf.0).pos, str.len());
-            (*buf.0).last = (*buf.0).pos.offset(str.len() as isize);
-        }
-        Some(buf)
-    }
-
     pub fn as_bytes(&self) -> &[u8] {
         unsafe { slice::from_raw_parts((*self.0).pos, self.len()) }
     }
@@ -119,31 +157,6 @@ impl MutableBuffer for TemporaryBuffer {
 
 pub struct MemoryBuffer(*mut ngx_buf_t);
 
-impl MemoryBuffer {
-    pub fn create_from_static_str(pool: *mut ngx_pool_t, str: &'static str) -> Option<TemporaryBuffer> {
-        assert!(!pool.is_null());
-        let buf = unsafe { ngx_calloc_buf(pool) };
-        if buf.is_null() {
-            return None;
-        }
-
-        let mut buf = TemporaryBuffer(buf);
-        // We cast away cost, but buffers with the memory flag are read-only
-        let start = str.as_ptr() as *mut u8;
-        let end = unsafe { start.offset(str.len() as isize) };
-
-        unsafe {
-            (*buf.0).start = start;
-            (*buf.0).pos = start;
-            (*buf.0).last = end;
-            (*buf.0).end = end;
-            (*buf.0).set_memory(1);
-        }
-
-        Some(buf)
-    }
-}
-
 impl Buffer for MemoryBuffer {
     fn as_ngx_buf(&self) -> *const ngx_buf_t {
         return self.0
@@ -179,21 +192,26 @@ impl Buffer for MemoryBuffer {
     }
 }
 
-pub unsafe fn ngx_alloc_buf(pool: *mut ngx_pool_t) -> *mut ngx_buf_t {
-    ngx_palloc(pool, mem::size_of::<ngx_buf_t>()) as *mut ngx_buf_t
-}
-
-pub unsafe fn ngx_calloc_buf(pool: *mut ngx_pool_t) -> *mut ngx_buf_t {
-    ngx_pcalloc(pool, mem::size_of::<ngx_buf_t>()) as *mut ngx_buf_t
-}
-
 impl ngx_str_t {
+    pub fn as_bytes(&self) -> &[u8]  {
+        unsafe { slice::from_raw_parts(self.data, self.len) }
+    }
+
     pub fn to_str(&self) -> &str {
-        let bytes = unsafe { slice::from_raw_parts(self.data, self.len) };
-        str::from_utf8(bytes).unwrap_or_default()
+        str::from_utf8(self.as_bytes()).unwrap_or_default()
     }
 
     pub fn to_string(&self) -> String {
         String::from(self.to_str())
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+}
+
+impl Default for ngx_str_t {
+    fn default() -> Self {
+        ngx_str_t { len: 0, data: ptr::null_mut() }
     }
 }

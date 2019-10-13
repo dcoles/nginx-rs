@@ -1,5 +1,6 @@
 use crate::bindings::*;
-use crate::core::Status;
+use crate::core::{Status, Pool};
+use std::ffi::c_void;
 
 #[macro_export]
 macro_rules! extern_http_request_handler {
@@ -34,12 +35,16 @@ impl Request {
         self.0 == unsafe { (*self.0).main }
     }
 
-    pub fn pool(&self) -> *mut ngx_pool_t {
-        unsafe { (*self.0).pool }
+    pub fn pool(&self) -> Pool {
+        Pool::from_ngx_pool(unsafe { (*self.0).pool })
     }
 
     pub fn connection(&self) -> *mut ngx_connection_t {
         unsafe { (*self.0).connection }
+    }
+
+    pub fn get_module_loc_conf(&self, module: &ngx_module_t) -> *mut c_void {
+        unsafe { *(*self.0).loc_conf.offset(module.ctx_index as isize) }
     }
 
     pub fn discard_request_body(&mut self) -> Status
@@ -47,8 +52,8 @@ impl Request {
         Status(unsafe { ngx_http_discard_request_body(self.0) })
     }
 
-    pub fn user_agent(&mut self) -> String {
-        unsafe { (*(*self.0).headers_in.user_agent).value.to_string() }
+    pub fn user_agent(&mut self) -> &ngx_str_t {
+        unsafe { &(*(*self.0).headers_in.user_agent).value }
     }
 
     pub fn set_status(&mut self, status: HTTPStatus) {
