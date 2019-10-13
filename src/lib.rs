@@ -20,8 +20,13 @@ impl LocationConf {
         LocationConf(unsafe { request.get_module_loc_conf(&ngx_http_hello_world_module) as *mut ngx_http_hello_world_loc_conf_t })
     }
 
-    fn text(&self) -> &ngx_str_t {
-        unsafe { &(*self.0).text }
+    fn text(&self) -> Option<&mut ngx_http_complex_value_t> {
+        let text = unsafe { (*self.0).text };
+        if text.is_null() {
+            None
+        } else {
+            Some(unsafe { &mut (*text) })
+        }
     }
 }
 
@@ -48,7 +53,16 @@ fn hello_world_handler(request: &mut Request) -> Status {
     let hlcf = LocationConf::from_request(&request);
 
     // Create body
-    let body = format!("Hello, {}!\n", if hlcf.text().is_empty() { request.user_agent().to_str() } else { hlcf.text().to_str() });
+    let text = match hlcf.text() {
+        None => return HTTP_INTERNAL_SERVER_ERROR.into(),
+        Some(text) => {
+            match request.get_complex_value(text) {
+                None => return HTTP_INTERNAL_SERVER_ERROR.into(),
+                Some(text) => text
+            }
+        }
+    };
+    let body = format!("Hello, {}!\n", if text.is_empty() { request.user_agent().to_str() } else { text.to_str() });
 
     // Send header
     request.set_status(HTTP_OK);
@@ -61,7 +75,7 @@ fn hello_world_handler(request: &mut Request) -> Status {
     // Send body
     let mut buf = match request.pool().create_buffer_from_str(&body) {
         Some(buf) => buf,
-        None => return ERROR,
+        None => return HTTP_INTERNAL_SERVER_ERROR.into(),
     };
     assert!(&buf.as_bytes()[..7] == b"Hello, ");
     buf.set_last_buf(request.is_main());

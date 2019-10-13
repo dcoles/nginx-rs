@@ -16,7 +16,7 @@ static ngx_command_t ngx_http_hello_world_commands[] = {
 
     { ngx_string("hello_world_text"),
       NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_slot,
+      ngx_http_set_complex_value_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_hello_world_loc_conf_t, text),
       NULL },
@@ -71,7 +71,7 @@ static char *ngx_http_hello_world_merge_loc_conf(ngx_conf_t *cf, void *parent, v
     ngx_http_hello_world_loc_conf_t *prev = parent;
     ngx_http_hello_world_loc_conf_t *conf = child;
 
-    ngx_conf_merge_str_value(conf->text, prev->text, "");
+    ngx_conf_merge_ptr_value(conf->text, prev->text, NULL);
 
     return NGX_CONF_OK;
 }

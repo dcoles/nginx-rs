@@ -5,7 +5,7 @@
 #include <ngx_http.h>
 
 typedef struct {
-    ngx_str_t  text;
+    ngx_http_complex_value_t  *text;
 } ngx_http_hello_world_loc_conf_t;
 
 extern ngx_module_t  ngx_http_hello_world_module;

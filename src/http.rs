@@ -47,6 +47,16 @@ impl Request {
         unsafe { *(*self.0).loc_conf.offset(module.ctx_index as isize) }
     }
 
+    pub fn get_complex_value(&self, cv: &mut ngx_http_complex_value_t) -> Option<ngx_str_t> {
+        let mut res: ngx_str_t = Default::default();
+        unsafe {
+            if ngx_http_complex_value(self.0, cv, &mut res) != NGX_OK as ngx_int_t {
+                return None
+            }
+        }
+        return Some(res);
+    }
+
     pub fn discard_request_body(&mut self) -> Status
     {
         Status(unsafe { ngx_http_discard_request_body(self.0) })
