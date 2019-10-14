@@ -3,6 +3,8 @@ use crate::bindings::*;
 use std::{slice, ptr};
 use std::str;
 use std::mem;
+use std::os::raw::c_void;
+use std::marker::PhantomData;
 
 #[derive(Ord, PartialOrd, Eq, PartialEq)]
 pub struct Status(pub ngx_int_t);
@@ -20,12 +22,12 @@ impl Status {
 pub struct Pool(*mut ngx_pool_t);
 
 impl Pool {
-    pub fn from_ngx_pool(pool: *mut ngx_pool_t) -> Pool {
+    pub unsafe fn from_ngx_pool(pool: *mut ngx_pool_t) -> Pool {
+        assert!(!pool.is_null());
         Pool(pool)
     }
 
     pub fn create_buffer(&mut self, size: usize) -> Option<TemporaryBuffer> {
-        assert!(!self.0.is_null());
         let buf = unsafe { ngx_create_temp_buf(self.0, size) };
         if buf.is_null() {
             return None;
@@ -45,8 +47,7 @@ impl Pool {
     }
 
     pub fn create_buffer_from_static_str(&mut self, str: &'static str) -> Option<MemoryBuffer> {
-        assert!(!self.0.is_null());
-        let buf = unsafe { self.ngx_calloc_buf() };
+        let buf = self.calloc_type::<ngx_buf_t>();
         if buf.is_null() {
             return None;
         }
@@ -66,12 +67,20 @@ impl Pool {
         Some(MemoryBuffer(buf))
     }
 
-    unsafe fn ngx_alloc_buf(&mut self) -> *mut ngx_buf_t {
-        ngx_palloc(self.0, mem::size_of::<ngx_buf_t>()) as *mut ngx_buf_t
+    pub fn alloc(&mut self, size: usize) -> *mut c_void {
+        unsafe { ngx_palloc(self.0, size) }
     }
 
-    unsafe fn ngx_calloc_buf(&mut self) -> *mut ngx_buf_t {
-        ngx_pcalloc(self.0, mem::size_of::<ngx_buf_t>()) as *mut ngx_buf_t
+    pub fn alloc_type<T>(&mut self) -> *mut T {
+        self.alloc(mem::size_of::<T>()) as *mut T
+    }
+
+    pub fn calloc(&mut self, size: usize) -> *mut c_void {
+        unsafe { ngx_pcalloc(self.0, size) }
+    }
+
+    pub fn calloc_type<T>(&mut self) -> *mut T {
+        self.calloc(mem::size_of::<T>()) as *mut T
     }
 }
 
@@ -192,9 +201,19 @@ impl Buffer for MemoryBuffer {
     }
 }
 
-impl ngx_str_t {
+pub struct NgxStr<'a>(ngx_str_t, PhantomData<&'a [u8]>);
+
+impl<'a> NgxStr<'a> {
+    pub fn new(str: &str) -> NgxStr {
+        NgxStr(ngx_str_t { len: str.len(), data: str.as_ptr() as *mut u_char }, PhantomData)
+    }
+
+    pub unsafe fn from_ngx_str(str: ngx_str_t) -> NgxStr<'a> {
+        NgxStr(str, PhantomData)
+    }
+
     pub fn as_bytes(&self) -> &[u8]  {
-        unsafe { slice::from_raw_parts(self.data, self.len) }
+        unsafe { slice::from_raw_parts(self.0.data, self.0.len) }
     }
 
     pub fn to_str(&self) -> &str {
@@ -206,12 +225,12 @@ impl ngx_str_t {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.len == 0
+        self.0.len == 0
     }
 }
 
-impl Default for ngx_str_t {
+impl Default for NgxStr<'_> {
     fn default() -> Self {
-        ngx_str_t { len: 0, data: ptr::null_mut() }
+        NgxStr(ngx_str_t { len: 0, data: b"".as_ptr() as *mut u_char }, PhantomData)
     }
 }

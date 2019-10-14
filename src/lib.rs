@@ -62,7 +62,8 @@ fn hello_world_handler(request: &mut Request) -> Status {
             }
         }
     };
-    let body = format!("Hello, {}!\n", if text.is_empty() { request.user_agent().to_str() } else { text.to_str() });
+    let user_agent = request.user_agent();
+    let body = format!("Hello, {}!\n", if text.is_empty() { user_agent.to_str() } else { text.to_str() });
 
     // Send header
     request.set_status(HTTP_OK);

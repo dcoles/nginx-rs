@@ -1,13 +1,14 @@
 use crate::bindings::*;
-use crate::core::{Status, Pool};
+use crate::core::{Status, Pool, NgxStr};
 use std::ffi::c_void;
+use core::ptr;
 
 #[macro_export]
 macro_rules! extern_http_request_handler {
     ( $x: ident, $y: ident ) => {
         #[no_mangle]
         pub extern fn $x(r: *mut ngx_http_request_t) -> ngx_int_t {
-            $y(&mut $crate::http::Request::from_ngx_http_request(r)).0
+            $y(unsafe { &mut $crate::http::Request::from_ngx_http_request(r) }).0
         }
     };
 }
@@ -27,7 +28,7 @@ pub const HTTP_FORBIDDEN: HTTPStatus = HTTPStatus(NGX_HTTP_FORBIDDEN as ngx_uint
 pub struct Request(*mut ngx_http_request_t);
 
 impl Request {
-    pub fn from_ngx_http_request(r: *mut ngx_http_request_t) -> Request {
+    pub unsafe fn from_ngx_http_request(r: *mut ngx_http_request_t) -> Request {
         Request(r)
     }
 
@@ -36,7 +37,7 @@ impl Request {
     }
 
     pub fn pool(&self) -> Pool {
-        Pool::from_ngx_pool(unsafe { (*self.0).pool })
+        unsafe { Pool::from_ngx_pool((*self.0).pool) }
     }
 
     pub fn connection(&self) -> *mut ngx_connection_t {
@@ -47,14 +48,14 @@ impl Request {
         unsafe { *(*self.0).loc_conf.offset(module.ctx_index as isize) }
     }
 
-    pub fn get_complex_value(&self, cv: &mut ngx_http_complex_value_t) -> Option<ngx_str_t> {
-        let mut res: ngx_str_t = Default::default();
+    pub fn get_complex_value(&self, cv: &mut ngx_http_complex_value_t) -> Option<NgxStr> {
+        let mut res = ngx_str_t { len: 0, data: ptr::null_mut() };
         unsafe {
             if ngx_http_complex_value(self.0, cv, &mut res) != NGX_OK as ngx_int_t {
-                return None
+                return None;
             }
+            Some(NgxStr::from_ngx_str(res))
         }
-        return Some(res);
     }
 
     pub fn discard_request_body(&mut self) -> Status
@@ -62,8 +63,8 @@ impl Request {
         Status(unsafe { ngx_http_discard_request_body(self.0) })
     }
 
-    pub fn user_agent(&mut self) -> &ngx_str_t {
-        unsafe { &(*(*self.0).headers_in.user_agent).value }
+    pub fn user_agent(&self) -> NgxStr {
+        unsafe { NgxStr::from_ngx_str((*(*self.0).headers_in.user_agent).value) }
     }
 
     pub fn set_status(&mut self, status: HTTPStatus) {
