@@ -5,6 +5,8 @@ use std::str;
 use std::mem;
 use std::os::raw::c_void;
 use std::marker::PhantomData;
+use std::str::Utf8Error;
+use std::borrow::Cow;
 
 #[derive(Ord, PartialOrd, Eq, PartialEq)]
 pub struct Status(pub ngx_int_t);
@@ -216,16 +218,22 @@ impl<'a> NgxStr<'a> {
         unsafe { slice::from_raw_parts(self.0.data, self.0.len) }
     }
 
-    pub fn to_str(&self) -> &str {
-        str::from_utf8(self.as_bytes()).unwrap_or_default()
+    pub fn to_str(&self) -> Result<&str, Utf8Error> {
+        str::from_utf8(self.as_bytes())
     }
 
-    pub fn to_string(&self) -> String {
-        String::from(self.to_str())
+    pub fn to_string_lossy(&self) -> Cow<str> {
+        String::from_utf8_lossy(self.as_bytes())
     }
 
     pub fn is_empty(&self) -> bool {
         self.0.len == 0
+    }
+}
+
+impl AsRef<[u8]> for NgxStr<'_> {
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
     }
 }
 

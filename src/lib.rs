@@ -33,7 +33,7 @@ impl LocationConf {
 extern_http_request_handler!(ngx_http_hello_world_access_handler, access_handler);
 
 fn access_handler(request: &mut Request) -> Status {
-    if request.user_agent().to_str().contains("curl") {
+    if request.user_agent().as_bytes().starts_with(b"curl") {
         return HTTP_FORBIDDEN.into();
     }
 
@@ -63,7 +63,7 @@ fn hello_world_handler(request: &mut Request) -> Status {
         }
     };
     let user_agent = request.user_agent();
-    let body = format!("Hello, {}!\n", if text.is_empty() { user_agent.to_str() } else { text.to_str() });
+    let body = format!("Hello, {}!\n", if text.is_empty() { user_agent.to_string_lossy() } else { text.to_string_lossy() });
 
     // Send header
     request.set_status(HTTP_OK);
