@@ -30,19 +30,15 @@ impl LocationConf {
     }
 }
 
-extern_http_request_handler!(ngx_http_hello_world_access_handler, access_handler);
-
-fn access_handler(request: &mut Request) -> Status {
+extern_http_request_handler!(ngx_http_hello_world_access_handler, |request: &mut Request| {
     if request.user_agent().as_bytes().starts_with(b"curl") {
         return HTTP_FORBIDDEN.into();
     }
 
     OK
-}
+});
 
-extern_http_request_handler!(ngx_http_hello_world_handler, hello_world_handler);
-
-fn hello_world_handler(request: &mut Request) -> Status {
+extern_http_request_handler!(ngx_http_hello_world_handler, |request: &mut Request| {
     ngx_log_debug_http!(request, "http hello_world handler");
 
     // Ignore client request body if any
@@ -84,7 +80,7 @@ fn hello_world_handler(request: &mut Request) -> Status {
 
     let mut out = ngx_chain_t { buf: buf.as_ngx_buf_mut(), next: ptr::null_mut() };
     request.output_filter(&mut out)
-}
+});
 
 #[cfg(test)]
 mod tests {

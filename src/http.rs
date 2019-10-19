@@ -5,10 +5,11 @@ use core::ptr;
 
 #[macro_export]
 macro_rules! extern_http_request_handler {
-    ( $x: ident, $y: ident ) => {
+    ( $x: ident, $y: expr ) => {
         #[no_mangle]
-        pub extern fn $x(r: *mut ngx_http_request_t) -> ngx_int_t {
-            $y(unsafe { &mut $crate::http::Request::from_ngx_http_request(r) }).0
+        pub extern "C" fn $x(r: *mut ngx_http_request_t) -> ngx_int_t {
+            let status: Status = $y(unsafe { &mut $crate::http::Request::from_ngx_http_request(r) });
+            status.0
         }
     };
 }
