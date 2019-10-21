@@ -13,24 +13,91 @@ use crate::http::*;
 
 use std::ptr;
 
-struct LocationConf(*mut ngx_http_hello_world_loc_conf_t);
+use std::os::raw::{c_void, c_char};
+use std::borrow::Cow;
 
-impl LocationConf {
-    fn from_request(request: &Request) -> LocationConf {
-        LocationConf(unsafe { request.get_module_loc_conf(&ngx_http_hello_world_module) as *mut ngx_http_hello_world_loc_conf_t })
+#[no_mangle]
+pub static ngx_http_hello_world_module_ctx: ngx_http_module_t = ngx_http_module_t {
+    preconfiguration: None,
+    postconfiguration: Some(init),
+
+    create_main_conf: None,
+    init_main_conf: None,
+
+    create_srv_conf: None,
+    merge_srv_conf: None,
+
+    create_loc_conf: Some(create_loc_conf),
+    merge_loc_conf: Some(merge_loc_conf),
+};
+
+extern "C" fn init(cf: *mut ngx_conf_t) -> ngx_int_t {
+    let cmcf = unsafe { ngx_http_conf_get_module_main_conf(cf, &ngx_http_core_module) as *mut ngx_http_core_main_conf_t };
+
+    let h = unsafe { ngx_array_push(&mut (*cmcf).phases[ngx_http_phases_NGX_HTTP_ACCESS_PHASE as usize].handlers) as *mut ngx_http_handler_pt };
+    if h.is_null() {
+        return ERROR.0;
     }
 
-    fn text(&self) -> Option<&mut ngx_http_complex_value_t> {
-        let text = unsafe { (*self.0).text };
-        if text.is_null() {
-            None
-        } else {
-            Some(unsafe { &mut (*text) })
+    unsafe {
+        *h = Some(ngx_http_hello_world_access_handler);
+    }
+
+    return OK.0;
+}
+
+struct LocConf {
+    text: String,
+}
+
+impl LocConf {
+    fn merge(&mut self, prev: &LocConf) {
+        if self.text.is_empty() {
+            self.text = String::from(if !prev.text.is_empty() { &prev.text } else { "" });
         }
     }
 }
 
-extern_http_request_handler!(ngx_http_hello_world_access_handler, |request: &mut Request| {
+extern "C" fn create_loc_conf(cf: *mut ngx_conf_t) -> *mut c_void {
+    let mut pool = unsafe { Pool::from_ngx_pool((*cf).pool) };
+    let x = pool.calloc_type::<LocConf>();
+    unsafe { ptr::write(x, LocConf { text: String::new() }) };
+    x as *mut c_void
+}
+
+#[no_mangle]
+pub extern "C" fn ngx_http_hello_world(cf: *mut ngx_conf_t, cmd: *mut ngx_command_t, conf: *mut c_void) -> *mut c_char {
+    let conf = conf as *mut LocConf;
+    let clcf = unsafe { ngx_http_conf_get_module_loc_conf(cf, &ngx_http_core_module) as *mut ngx_http_core_loc_conf_t };
+    unsafe {
+        (*clcf).handler = Some(ngx_http_hello_world_handler);
+    }
+    ptr::null_mut()
+}
+
+#[no_mangle]
+pub extern "C" fn ngx_http_hello_world_set_text(cf: *mut ngx_conf_t, cmd: *mut ngx_command_t, conf: *mut c_void) -> *mut c_char {
+    let conf = conf as *mut LocConf;
+    unsafe {
+        let args = (*(*cf).args).elts as *mut ngx_str_t;
+        let value = NgxStr::from_ngx_str(*args.offset(1));
+        (*conf).text = String::from(value.to_string_lossy());
+    }
+    ptr::null_mut()
+}
+
+extern "C" fn merge_loc_conf(cf: *mut ngx_conf_t, prev: *mut c_void, conf: *mut c_void) -> *mut c_char {
+    let prev = prev as *mut LocConf;
+    let conf = conf as *mut LocConf;
+
+    unsafe {
+        (*conf).merge(&(*prev));
+    }
+
+    ptr::null_mut()
+}
+
+http_request_handler!(ngx_http_hello_world_access_handler, |request: &mut Request| {
     if request.user_agent().as_bytes().starts_with(b"curl") {
         return HTTP_FORBIDDEN.into();
     }
@@ -38,7 +105,7 @@ extern_http_request_handler!(ngx_http_hello_world_access_handler, |request: &mut
     OK
 });
 
-extern_http_request_handler!(ngx_http_hello_world_handler, |request: &mut Request| {
+http_request_handler!(ngx_http_hello_world_handler, |request: &mut Request| {
     ngx_log_debug_http!(request, "http hello_world handler");
 
     // Ignore client request body if any
@@ -46,20 +113,12 @@ extern_http_request_handler!(ngx_http_hello_world_handler, |request: &mut Reques
         return HTTP_INTERNAL_SERVER_ERROR.into();
     }
 
-    let hlcf = LocationConf::from_request(&request);
+    let hlcf = unsafe { request.get_module_loc_conf(&ngx_http_hello_world_module) as *mut LocConf };
+    let text = unsafe { &(*hlcf).text };
 
     // Create body
-    let text = match hlcf.text() {
-        None => return HTTP_INTERNAL_SERVER_ERROR.into(),
-        Some(text) => {
-            match request.get_complex_value(text) {
-                None => return HTTP_INTERNAL_SERVER_ERROR.into(),
-                Some(text) => text
-            }
-        }
-    };
     let user_agent = request.user_agent();
-    let body = format!("Hello, {}!\n", if text.is_empty() { user_agent.to_string_lossy() } else { text.to_string_lossy() });
+    let body = format!("Hello, {}!\n", if text.is_empty() { user_agent.to_string_lossy() } else { Cow::from(text) });
 
     // Send header
     request.set_status(HTTP_OK);

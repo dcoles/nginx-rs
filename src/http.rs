@@ -4,10 +4,10 @@ use std::ffi::c_void;
 use core::ptr;
 
 #[macro_export]
-macro_rules! extern_http_request_handler {
+macro_rules! http_request_handler {
     ( $x: ident, $y: expr ) => {
         #[no_mangle]
-        pub extern "C" fn $x(r: *mut ngx_http_request_t) -> ngx_int_t {
+        extern "C" fn $x(r: *mut ngx_http_request_t) -> ngx_int_t {
             let status: Status = $y(unsafe { &mut $crate::http::Request::from_ngx_http_request(r) });
             status.0
         }
@@ -91,4 +91,19 @@ impl Request {
     pub fn output_filter(&mut self, body: *mut ngx_chain_t) -> Status {
         Status(unsafe { ngx_http_output_filter(self.0, body) })
     }
+}
+
+pub unsafe fn ngx_http_conf_get_module_main_conf(cf: *mut ngx_conf_t, module: &ngx_module_t)  -> *mut c_void {
+    let http_conf_ctx = (*cf).ctx as *mut ngx_http_conf_ctx_t;
+    *(*http_conf_ctx).main_conf.offset(module.ctx_index as isize)
+}
+
+pub unsafe fn ngx_http_conf_get_module_srv_conf(cf: *mut ngx_conf_t, module: &ngx_module_t)  -> *mut c_void {
+    let http_conf_ctx = (*cf).ctx as *mut ngx_http_conf_ctx_t;
+    *(*http_conf_ctx).srv_conf.offset(module.ctx_index as isize)
+}
+
+pub unsafe fn ngx_http_conf_get_module_loc_conf(cf: *mut ngx_conf_t, module: &ngx_module_t)  -> *mut c_void {
+    let http_conf_ctx = (*cf).ctx as *mut ngx_http_conf_ctx_t;
+    *(*http_conf_ctx).loc_conf.offset(module.ctx_index as isize)
 }
