@@ -46,6 +46,7 @@ extern "C" fn init(cf: *mut ngx_conf_t) -> ngx_int_t {
     return OK.0;
 }
 
+#[derive(Default)]
 struct LocConf {
     text: String,
 }
@@ -58,16 +59,32 @@ impl LocConf {
     }
 }
 
-extern "C" fn create_loc_conf(cf: *mut ngx_conf_t) -> *mut c_void {
-    let mut pool = unsafe { Pool::from_ngx_pool((*cf).pool) };
-    let x = pool.calloc_type::<LocConf>();
-    unsafe { ptr::write(x, LocConf { text: String::new() }) };
-    x as *mut c_void
+macro_rules! create_conf {
+    ( $x: ident, $y: ty ) => {
+        extern "C" fn $x(cf: *mut ngx_conf_t) -> *mut c_void {
+            let mut pool = unsafe { Pool::from_ngx_pool((*cf).pool) };
+            pool.allocate::<$y>(Default::default()) as *mut c_void
+        }
+    };
 }
+
+macro_rules! merge_conf {
+    ( $x: ident, $y: ty ) => {
+        extern "C" fn $x(cf: *mut ngx_conf_t, prev: *mut c_void, conf: *mut c_void) -> *mut c_char {
+            let prev = unsafe { &mut *(prev as *mut $y) };
+            let conf = unsafe { &mut *(conf as *mut $y) };
+            conf.merge(prev);
+            ptr::null_mut()
+        }
+    };
+}
+
+create_conf!(create_loc_conf, LocConf);
+merge_conf!(merge_loc_conf, LocConf);
 
 #[no_mangle]
 pub extern "C" fn ngx_http_hello_world(cf: *mut ngx_conf_t, cmd: *mut ngx_command_t, conf: *mut c_void) -> *mut c_char {
-    let conf = conf as *mut LocConf;
+    let conf = unsafe { &mut *(conf as *mut LocConf) };
     let clcf = unsafe { ngx_http_conf_get_module_loc_conf(cf, &ngx_http_core_module) as *mut ngx_http_core_loc_conf_t };
     unsafe {
         (*clcf).handler = Some(ngx_http_hello_world_handler);
@@ -77,25 +94,15 @@ pub extern "C" fn ngx_http_hello_world(cf: *mut ngx_conf_t, cmd: *mut ngx_comman
 
 #[no_mangle]
 pub extern "C" fn ngx_http_hello_world_set_text(cf: *mut ngx_conf_t, cmd: *mut ngx_command_t, conf: *mut c_void) -> *mut c_char {
-    let conf = conf as *mut LocConf;
+    let conf = unsafe { &mut *(conf as *mut LocConf) };
     unsafe {
         let args = (*(*cf).args).elts as *mut ngx_str_t;
         let value = NgxStr::from_ngx_str(*args.offset(1));
-        (*conf).text = String::from(value.to_string_lossy());
+        conf.text = String::from(value.to_string_lossy());
     }
     ptr::null_mut()
 }
 
-extern "C" fn merge_loc_conf(cf: *mut ngx_conf_t, prev: *mut c_void, conf: *mut c_void) -> *mut c_char {
-    let prev = prev as *mut LocConf;
-    let conf = conf as *mut LocConf;
-
-    unsafe {
-        (*conf).merge(&(*prev));
-    }
-
-    ptr::null_mut()
-}
 
 http_request_handler!(ngx_http_hello_world_access_handler, |request: &mut Request| {
     if request.user_agent().as_bytes().starts_with(b"curl") {

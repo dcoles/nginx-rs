@@ -69,11 +69,22 @@ impl Pool {
         Some(MemoryBuffer(buf))
     }
 
+    unsafe fn add_cleanup_for_value<T>(&mut self, value: *mut T) -> Result<(), ()> {
+        let cln = ngx_pool_cleanup_add(self.0, 0);
+        if cln.is_null() {
+            return Err(());
+        }
+        (*cln).handler = Some(cleanup_type::<T>);
+        (*cln).data = value as *mut c_void;
+
+        Ok(())
+    }
+
     pub fn alloc(&mut self, size: usize) -> *mut c_void {
         unsafe { ngx_palloc(self.0, size) }
     }
 
-    pub fn alloc_type<T>(&mut self) -> *mut T {
+    pub fn alloc_type<T: Copy>(&mut self) -> *mut T {
         self.alloc(mem::size_of::<T>()) as *mut T
     }
 
@@ -81,9 +92,25 @@ impl Pool {
         unsafe { ngx_pcalloc(self.0, size) }
     }
 
-    pub fn calloc_type<T>(&mut self) -> *mut T {
+    pub fn calloc_type<T: Copy>(&mut self) -> *mut T {
         self.calloc(mem::size_of::<T>()) as *mut T
     }
+
+    pub fn allocate<T>(&mut self, value: T) -> *mut T {
+        unsafe {
+            let p = self.alloc(mem::size_of::<T>()) as *mut T;
+            ptr::write(p, value);
+            if self.add_cleanup_for_value(p).is_err() {
+                ptr::drop_in_place(p);
+                return ptr::null_mut();
+            };
+            p
+        }
+    }
+}
+
+unsafe extern "C" fn cleanup_type<T>(data: *mut c_void) {
+    ptr::drop_in_place(data as *mut T);
 }
 
 pub trait Buffer {
