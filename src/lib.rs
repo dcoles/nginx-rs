@@ -18,32 +18,40 @@ use std::borrow::Cow;
 
 #[no_mangle]
 pub static ngx_http_hello_world_module_ctx: ngx_http_module_t = ngx_http_module_t {
-    preconfiguration: None,
-    postconfiguration: Some(init),
+    preconfiguration: Some(Module::preconfiguration),
+    postconfiguration: Some(Module::postconfiguration),
 
-    create_main_conf: None,
-    init_main_conf: None,
+    create_main_conf: Some(Module::create_main_conf),
+    init_main_conf: Some(Module::init_main_conf),
 
-    create_srv_conf: None,
-    merge_srv_conf: None,
+    create_srv_conf: Some(Module::create_srv_conf),
+    merge_srv_conf: Some(Module::merge_srv_conf),
 
-    create_loc_conf: Some(create_loc_conf),
-    merge_loc_conf: Some(merge_loc_conf),
+    create_loc_conf: Some(Module::create_loc_conf),
+    merge_loc_conf: Some(Module::merge_loc_conf),
 };
 
-extern "C" fn init(cf: *mut ngx_conf_t) -> ngx_int_t {
-    let cmcf = unsafe { ngx_http_conf_get_module_main_conf(cf, &ngx_http_core_module) as *mut ngx_http_core_main_conf_t };
+struct Module;
 
-    let h = unsafe { ngx_array_push(&mut (*cmcf).phases[ngx_http_phases_NGX_HTTP_ACCESS_PHASE as usize].handlers) as *mut ngx_http_handler_pt };
-    if h.is_null() {
-        return ERROR.0;
+impl HTTPModule for Module {
+    type MainConf = ();
+    type SrvConf = ();
+    type LocConf = LocConf;
+
+    extern "C" fn postconfiguration(cf: *mut ngx_conf_t) -> ngx_int_t {
+        let cmcf = unsafe { ngx_http_conf_get_module_main_conf(cf, &ngx_http_core_module) as *mut ngx_http_core_main_conf_t };
+
+        let h = unsafe { ngx_array_push(&mut (*cmcf).phases[ngx_http_phases_NGX_HTTP_ACCESS_PHASE as usize].handlers) as *mut ngx_http_handler_pt };
+        if h.is_null() {
+            return ERROR.0;
+        }
+
+        unsafe {
+            *h = Some(ngx_http_hello_world_access_handler);
+        }
+
+        return OK.0;
     }
-
-    unsafe {
-        *h = Some(ngx_http_hello_world_access_handler);
-    }
-
-    return OK.0;
 }
 
 #[derive(Default)]
@@ -51,7 +59,7 @@ struct LocConf {
     text: String,
 }
 
-impl LocConf {
+impl Merge for LocConf {
     fn merge(&mut self, prev: &LocConf) {
         if self.text.is_empty() {
             self.text = String::from(if !prev.text.is_empty() { &prev.text } else { "" });
@@ -59,31 +67,8 @@ impl LocConf {
     }
 }
 
-macro_rules! create_conf {
-    ( $x: ident, $y: ty ) => {
-        extern "C" fn $x(cf: *mut ngx_conf_t) -> *mut c_void {
-            let mut pool = unsafe { Pool::from_ngx_pool((*cf).pool) };
-            pool.allocate::<$y>(Default::default()) as *mut c_void
-        }
-    };
-}
-
-macro_rules! merge_conf {
-    ( $x: ident, $y: ty ) => {
-        extern "C" fn $x(cf: *mut ngx_conf_t, prev: *mut c_void, conf: *mut c_void) -> *mut c_char {
-            let prev = unsafe { &mut *(prev as *mut $y) };
-            let conf = unsafe { &mut *(conf as *mut $y) };
-            conf.merge(prev);
-            ptr::null_mut()
-        }
-    };
-}
-
-create_conf!(create_loc_conf, LocConf);
-merge_conf!(merge_loc_conf, LocConf);
-
 #[no_mangle]
-pub extern "C" fn ngx_http_hello_world(cf: *mut ngx_conf_t, cmd: *mut ngx_command_t, conf: *mut c_void) -> *mut c_char {
+pub extern "C" fn ngx_http_hello_world(cf: *mut ngx_conf_t, _cmd: *mut ngx_command_t, conf: *mut c_void) -> *mut c_char {
     let conf = unsafe { &mut *(conf as *mut LocConf) };
     let clcf = unsafe { ngx_http_conf_get_module_loc_conf(cf, &ngx_http_core_module) as *mut ngx_http_core_loc_conf_t };
     unsafe {
@@ -93,7 +78,7 @@ pub extern "C" fn ngx_http_hello_world(cf: *mut ngx_conf_t, cmd: *mut ngx_comman
 }
 
 #[no_mangle]
-pub extern "C" fn ngx_http_hello_world_set_text(cf: *mut ngx_conf_t, cmd: *mut ngx_command_t, conf: *mut c_void) -> *mut c_char {
+pub extern "C" fn ngx_http_hello_world_set_text(cf: *mut ngx_conf_t, _cmd: *mut ngx_command_t, conf: *mut c_void) -> *mut c_char {
     let conf = unsafe { &mut *(conf as *mut LocConf) };
     unsafe {
         let args = (*(*cf).args).elts as *mut ngx_str_t;
