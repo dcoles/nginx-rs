@@ -1,5 +1,5 @@
 use crate::bindings::*;
-use crate::core::{Status, Pool, NgxStr, OK};
+use crate::core::{status, Status, Pool, NgxStr};
 use std::os::raw::{c_void, c_char};
 use core::ptr;
 
@@ -40,11 +40,11 @@ pub trait HTTPModule {
     type LocConf: Merge + Default;
 
     extern "C" fn preconfiguration(_cf: *mut ngx_conf_t) -> ngx_int_t {
-        OK.0
+        status::OK.0
     }
 
     extern "C" fn postconfiguration(_cf: *mut ngx_conf_t) -> ngx_int_t {
-        OK.0
+        status::OK.0
     }
 
     extern "C" fn create_main_conf(cf: *mut ngx_conf_t) -> *mut c_void {

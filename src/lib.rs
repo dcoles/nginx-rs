@@ -43,14 +43,14 @@ impl HTTPModule for Module {
 
         let h = unsafe { ngx_array_push(&mut (*cmcf).phases[ngx_http_phases_NGX_HTTP_ACCESS_PHASE as usize].handlers) as *mut ngx_http_handler_pt };
         if h.is_null() {
-            return ERROR.0;
+            return status::ERROR.0;
         }
 
         unsafe {
             *h = Some(ngx_http_hello_world_access_handler);
         }
 
-        return OK.0;
+        return status::OK.0;
     }
 }
 
@@ -94,7 +94,7 @@ http_request_handler!(ngx_http_hello_world_access_handler, |request: &mut Reques
         return HTTP_FORBIDDEN.into();
     }
 
-    OK
+    status::OK
 });
 
 http_request_handler!(ngx_http_hello_world_handler, |request: &mut Request| {
@@ -115,9 +115,9 @@ http_request_handler!(ngx_http_hello_world_handler, |request: &mut Request| {
     // Send header
     request.set_status(HTTP_OK);
     request.set_content_length_n(body.len());
-    let status = request.send_header();
-    if status == ERROR || status > OK || request.set_header_only() {
-        return status;
+    let stat = request.send_header();
+    if stat == status::ERROR || stat > status::OK || request.set_header_only() {
+        return stat;
     }
 
     // Send body
