@@ -8,7 +8,7 @@ fn main() {
     // shared library.
     println!("cargo:rustc-link-lib=bz2");
 
-    let nginx_dir = env::var("NGINX_DIR").unwrap_or(String::from("../nginx"));
+    let nginx_dir = env::var("NGINX_DIR").unwrap_or(String::from("../../nginx"));
 
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for

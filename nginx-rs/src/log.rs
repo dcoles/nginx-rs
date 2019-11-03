@@ -17,6 +17,6 @@ macro_rules! ngx_log_debug {
 macro_rules! ngx_log_debug_http {
     ( $request:expr, $($arg:tt)* ) => {
         let log = unsafe { (*$request.connection()).log };
-        ngx_log_debug!(NGX_LOG_DEBUG_HTTP, log, $($arg)*);
+        $crate::ngx_log_debug!(NGX_LOG_DEBUG_HTTP, log, $($arg)*);
     }
 }

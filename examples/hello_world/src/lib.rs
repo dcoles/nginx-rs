@@ -1,43 +1,12 @@
-pub mod bindings;
-pub mod core;
+use nginx_rs::bindings::*;
+use nginx_rs::core::*;
+use nginx_rs::http::*;
 
-#[macro_use]
-pub mod log;
+use nginx_rs::{ngx_string, http_request_handler, ngx_null_command, ngx_log_debug_http};
 
-#[macro_use]
-pub mod http;
-
-use crate::bindings::*;
-use crate::core::*;
-use crate::http::*;
-
-use std::ptr;
-
-use std::os::raw::{c_void, c_char};
 use std::borrow::Cow;
-
-const fn size_of<T>(_: &T) -> usize {
-    std::mem::size_of::<T>()
-}
-
-macro_rules! ngx_string {
-    ($x:expr) => {
-        ngx_str_t { len: size_of($x) - 1, data: $x.as_ptr() as *mut u8 }
-    };
-}
-
-macro_rules! ngx_null_command {
-    () => {
-        ngx_command_t {
-            name: ngx_str_t { len: 0, data: ptr::null_mut() },
-            type_: 0,
-            set: None,
-            conf: 0,
-            offset: 0,
-            post: ptr::null_mut(),
-        }
-    };
-}
+use std::os::raw::{c_char, c_void};
+use std::ptr;
 
 #[no_mangle]
 static mut ngx_http_hello_world_commands: [ngx_command_t; 3] = [
