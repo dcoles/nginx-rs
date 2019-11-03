@@ -1,7 +1,6 @@
 ngx_module_type=HTTP
 ngx_addon_name=hello_world
 ngx_module_name=ngx_http_hello_world_module
-ngx_module_srcs="$ngx_addon_dir/ngx_http_hello_world_module.c"
 ngx_module_libs="-L$ngx_addon_dir/target/release -lhello_rs"
 
 export NGINX_DIR="$PWD"
