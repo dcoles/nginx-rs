@@ -8,14 +8,14 @@ pub use pool::*;
 pub use status::*;
 pub use string::*;
 
-pub const fn size_of_val<T>(_: &T) -> usize {
-    std::mem::size_of::<T>()
-}
-
 #[macro_export]
 macro_rules! ngx_string {
     ($x:expr) => {
-        ngx_str_t { len: $crate::core::size_of_val($x) - 1, data: $x.as_ptr() as *mut u8 }
+        {
+            // const asserts are not yet supported (see rust-lang/rust#51999)
+            &[()][1 - (($x[$x.len() - 1] == b'\0') as usize)]; // must have nul-byte
+            ngx_str_t { len: $x.len() - 1, data: $x.as_ptr() as *mut u8 }
+        }
     };
 }
 
