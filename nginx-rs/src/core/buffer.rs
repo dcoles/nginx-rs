@@ -17,9 +17,13 @@ pub trait Buffer {
         unsafe {
             let pos = (*buf).pos;
             let last = (*buf).last;
-            assert!(last > pos);
+            assert!(last >= pos);
             usize::wrapping_sub(last as _, pos as _)
         }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     fn set_last_buf(&mut self, last: bool) {
@@ -80,10 +84,10 @@ impl MemoryBuffer {
 
 impl Buffer for MemoryBuffer {
     fn as_ngx_buf(&self) -> *const ngx_buf_t {
-        return self.0
+        self.0
     }
 
     fn as_ngx_buf_mut(&mut self) -> *mut ngx_buf_t {
-        return self.0
+        self.0
     }
 }

@@ -83,19 +83,17 @@ impl HTTPModule for Module {
     type SrvConf = ();
     type LocConf = LocConf;
 
-    extern "C" fn postconfiguration(cf: *mut ngx_conf_t) -> ngx_int_t {
-        let cmcf = unsafe { ngx_http_conf_get_module_main_conf(cf, &ngx_http_core_module) as *mut ngx_http_core_main_conf_t };
+    unsafe extern "C" fn postconfiguration(cf: *mut ngx_conf_t) -> ngx_int_t {
+        let cmcf = ngx_http_conf_get_module_main_conf(cf, &ngx_http_core_module) as *mut ngx_http_core_main_conf_t;
 
-        let h = unsafe { ngx_array_push(&mut (*cmcf).phases[ngx_http_phases_NGX_HTTP_ACCESS_PHASE as usize].handlers) as *mut ngx_http_handler_pt };
+        let h = ngx_array_push(&mut (*cmcf).phases[ngx_http_phases_NGX_HTTP_ACCESS_PHASE as usize].handlers) as *mut ngx_http_handler_pt;
         if h.is_null() {
             return ERROR.into();
         }
 
-        unsafe {
-            *h = Some(ngx_http_hello_world_access_handler);
-        }
+        *h = Some(ngx_http_hello_world_access_handler);
 
-        return OK.into();
+        OK.into()
     }
 }
 
@@ -113,23 +111,21 @@ impl Merge for LocConf {
 }
 
 #[no_mangle]
-pub extern "C" fn ngx_http_hello_world(cf: *mut ngx_conf_t, _cmd: *mut ngx_command_t, conf: *mut c_void) -> *mut c_char {
-    let conf = unsafe { &mut *(conf as *mut LocConf) };
-    let clcf = unsafe { ngx_http_conf_get_module_loc_conf(cf, &ngx_http_core_module) as *mut ngx_http_core_loc_conf_t };
-    unsafe {
-        (*clcf).handler = Some(ngx_http_hello_world_handler);
-    }
+unsafe extern "C" fn ngx_http_hello_world(cf: *mut ngx_conf_t, _cmd: *mut ngx_command_t, conf: *mut c_void) -> *mut c_char {
+    let conf = &mut *(conf as *mut LocConf);
+    let clcf = ngx_http_conf_get_module_loc_conf(cf, &ngx_http_core_module) as *mut ngx_http_core_loc_conf_t;
+    (*clcf).handler = Some(ngx_http_hello_world_handler);
+
     ptr::null_mut()
 }
 
 #[no_mangle]
-pub extern "C" fn ngx_http_hello_world_set_text(cf: *mut ngx_conf_t, _cmd: *mut ngx_command_t, conf: *mut c_void) -> *mut c_char {
-    let conf = unsafe { &mut *(conf as *mut LocConf) };
-    unsafe {
-        let args = (*(*cf).args).elts as *mut ngx_str_t;
-        let value = NgxStr::from_ngx_str(*args.offset(1));
-        conf.text = String::from(value.to_string_lossy());
-    }
+unsafe extern "C" fn ngx_http_hello_world_set_text(cf: *mut ngx_conf_t, _cmd: *mut ngx_command_t, conf: *mut c_void) -> *mut c_char {
+    let conf = &mut *(conf as *mut LocConf);
+    let args = (*(*cf).args).elts as *mut ngx_str_t;
+    let value = NgxStr::from_ngx_str(*args.add(1));
+    conf.text = String::from(value.to_string_lossy());
+
     ptr::null_mut()
 }
 

@@ -27,7 +27,7 @@ impl Pool {
         unsafe {
             let mut buf = buffer.as_ngx_buf_mut();
             ptr::copy_nonoverlapping(str.as_ptr(), (*buf).pos, str.len());
-            (*buf).last = (*buf).pos.offset(str.len() as isize);
+            (*buf).last = (*buf).pos.add(str.len());
         }
         Some(buffer)
     }
@@ -40,7 +40,7 @@ impl Pool {
 
         // We cast away const, but buffers with the memory flag are read-only
         let start = str.as_ptr() as *mut u8;
-        let end = unsafe { start.offset(str.len() as isize) };
+        let end = unsafe { start.add(str.len()) };
 
         unsafe {
             (*buf).start = start;

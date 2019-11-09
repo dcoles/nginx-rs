@@ -37,7 +37,7 @@ impl Request {
     }
 
     pub fn get_module_loc_conf(&self, module: &ngx_module_t) -> *mut c_void {
-        unsafe { *(*self.0).loc_conf.offset(module.ctx_index as isize) }
+        unsafe { *(*self.0).loc_conf.add(module.ctx_index) }
     }
 
     pub fn get_complex_value(&self, cv: &mut ngx_http_complex_value_t) -> Option<NgxStr> {
@@ -79,7 +79,7 @@ impl Request {
         unsafe { (*self.0).header_only() != 0 }
     }
 
-    pub fn output_filter(&mut self, body: *mut ngx_chain_t) -> Status {
+    pub fn output_filter(&mut self, body: &mut ngx_chain_t) -> Status {
         Status(unsafe { ngx_http_output_filter(self.0, body) })
     }
 }
