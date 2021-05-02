@@ -196,11 +196,3 @@ http_request_handler!(ngx_http_hello_world_handler, |request: &mut Request| {
     let mut out = ngx_chain_t { buf: buf.as_ngx_buf_mut(), next: ptr::null_mut() };
     request.output_filter(&mut out)
 });
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
