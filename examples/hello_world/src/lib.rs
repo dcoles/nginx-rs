@@ -11,7 +11,7 @@ use std::ptr;
 #[no_mangle]
 static mut ngx_http_hello_world_commands: [ngx_command_t; 3] = [
     ngx_command_t {
-        name: ngx_string!(b"hello_world\0"),
+        name: ngx_string!("hello_world"),
         type_: (NGX_HTTP_LOC_CONF|NGX_CONF_NOARGS) as ngx_uint_t,
         set: Some(ngx_http_hello_world),
         conf: 0,
@@ -19,7 +19,7 @@ static mut ngx_http_hello_world_commands: [ngx_command_t; 3] = [
         post: ptr::null_mut(),
     },
     ngx_command_t {
-        name: ngx_string!(b"hello_world_text\0"),
+        name: ngx_string!("hello_world_text"),
         type_: (NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1) as ngx_uint_t,
         set: Some(ngx_http_hello_world_set_text),
         conf: NGX_RS_HTTP_LOC_CONF_OFFSET,

@@ -8,16 +8,16 @@ pub use pool::*;
 pub use status::*;
 pub use string::*;
 
-/// Static string initializer for [`ngx_str_t`] from bytes.
+/// Static string initializer for [`ngx_str_t`].
+///
+/// The resulting byte string is always nul-terminated (just like a C string).
 ///
 /// [`ngx_str_t`]: https://nginx.org/en/docs/dev/development_guide.html#string_overview
 #[macro_export]
 macro_rules! ngx_string {
-    ($x:expr) => {
+    ($s:expr) => {
         {
-            // const asserts are not yet supported (see rust-lang/rust#51999)
-            &[()][1 - (($x[$x.len() - 1] == b'\0') as usize)]; // must have nul-byte
-            ngx_str_t { len: $x.len() - 1, data: $x.as_ptr() as *mut u8 }
+            ngx_str_t { len: $s.len(), data: concat!($s, "\0").as_ptr() as *mut u8 }
         }
     };
 }
