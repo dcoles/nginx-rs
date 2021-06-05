@@ -6,12 +6,15 @@ use crate::http::status::*;
 use std::ptr;
 use std::os::raw::c_void;
 
+/// Define a static request handler.
+///
+/// Handlers are expected to take a single [`Request`] argument and return a [`Status`].
 #[macro_export]
 macro_rules! http_request_handler {
-    ( $x: ident, $y: expr ) => {
+    ( $name: ident, $handler: expr ) => {
         #[no_mangle]
-        extern "C" fn $x(r: *mut ngx_http_request_t) -> ngx_int_t {
-            let status: Status = $y(unsafe { &mut $crate::http::Request::from_ngx_http_request(r) });
+        extern "C" fn $name(r: *mut ngx_http_request_t) -> ngx_int_t {
+            let status: Status = $handler(unsafe { &mut $crate::http::Request::from_ngx_http_request(r) });
             status.0
         }
     };
@@ -83,4 +86,3 @@ impl Request {
         Status(unsafe { ngx_http_output_filter(self.0, body) })
     }
 }
-

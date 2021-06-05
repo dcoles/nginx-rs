@@ -1,3 +1,7 @@
+/// Write to logger at a specified level.
+///
+/// See [Logging](https://nginx.org/en/docs/dev/development_guide.html#logging)
+/// for available log levels.
 #[macro_export]
 macro_rules! ngx_log_debug {
     ( $level:expr, $log:expr, $($arg:tt)* ) => {
@@ -13,6 +17,9 @@ macro_rules! ngx_log_debug {
     }
 }
 
+/// Log to request connection log at level [`NGX_LOG_DEBUG_HTTP`].
+///
+/// [`NGX_LOG_DEBUG_HTTP`]: https://nginx.org/en/docs/dev/development_guide.html#logging
 #[macro_export]
 macro_rules! ngx_log_debug_http {
     ( $request:expr, $($arg:tt)* ) => {

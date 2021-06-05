@@ -8,6 +8,9 @@ pub use pool::*;
 pub use status::*;
 pub use string::*;
 
+/// Static string initializer for [`ngx_str_t`] from bytes.
+///
+/// [`ngx_str_t`]: https://nginx.org/en/docs/dev/development_guide.html#string_overview
 #[macro_export]
 macro_rules! ngx_string {
     ($x:expr) => {
@@ -19,6 +22,9 @@ macro_rules! ngx_string {
     };
 }
 
+/// Static empty string initializer for [`ngx_str_t`].
+///
+/// [`ngx_str_t`]: https://nginx.org/en/docs/dev/development_guide.html#string_overview
 #[macro_export]
 macro_rules! ngx_null_string {
     () => {
@@ -26,6 +32,11 @@ macro_rules! ngx_null_string {
     };
 }
 
+/// Static empty configuration directive initializer for [`ngx_command_t`].
+///
+/// This is typically used to terminate an array of configuration directives.
+///
+/// [`ngx_command_t`]: https://nginx.org/en/docs/dev/development_guide.html#config_directives
 #[macro_export]
 macro_rules! ngx_null_command {
     () => {
