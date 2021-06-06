@@ -159,7 +159,7 @@ http_request_handler!(ngx_http_hello_world_handler, |request: &mut Request| {
     request.set_status(HTTP_OK);
     request.set_content_length_n(body.len());
     let status = request.send_header();
-    if status == ERROR || status > OK || request.set_header_only() {
+    if status == ERROR || status > OK || request.header_only() {
         return status;
     }
 

@@ -77,7 +77,7 @@ impl Request {
         Status(unsafe { ngx_http_send_header(self.0) })
     }
 
-    pub fn set_header_only(&self) -> bool {
+    pub fn header_only(&self) -> bool {
         unsafe { (*self.0).header_only() != 0 }
     }
 
