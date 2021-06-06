@@ -1,6 +1,5 @@
 use crate::bindings::*;
 
-use std::marker::PhantomData;
 use std::slice;
 use std::str::{self, Utf8Error};
 use std::borrow::Cow;
@@ -31,25 +30,23 @@ macro_rules! ngx_null_string {
 
 /// Representation of a borrowed [Nginx string].
 ///
-/// This ensures that the lifetime of strings are correctly tracked.
-///
 /// [Nginx string]: https://nginx.org/en/docs/dev/development_guide.html#string_overview
-pub struct NgxStr<'a>(ngx_str_t, PhantomData<&'a [u8]>);
+pub struct NgxStr([u_char]);
 
-impl<'a> NgxStr<'a> {
+impl NgxStr {
     /// Create an [`NgxStr`] from an [`ngx_str_t`].
     ///
-    /// The string must point to a valid block of memory of at least `len` bytes
-    /// that must remain valid and constant for the lifetime of the returned [`NgxStr`].
-    ///
     /// [`ngx_str_t`]: https://nginx.org/en/docs/dev/development_guide.html#string_overview
-    pub unsafe fn from_ngx_str(str: ngx_str_t) -> Self {
-        NgxStr(str, PhantomData)
+    pub unsafe fn from_ngx_str<'a>(str: ngx_str_t) -> &'a NgxStr {
+        // SAFETY: The caller has provided a valid `ngx_str_t` with a `data` pointer that points
+        // to range of bytes of at least `len` bytes, whose content remains valid and doesn't
+        // change for the lifetime of the returned `NgxStr`.
+        slice::from_raw_parts(str.data, str.len).into()
     }
 
     /// Access the [`NgxStr`] as a byte slice.
     pub fn as_bytes(&self) -> &[u8] {
-        unsafe { slice::from_raw_parts(self.0.data, self.0.len) }
+        &self.0
     }
 
     /// Yields a `&str` slice if the [`NgxStr`] contains valid UTF-8.
@@ -66,24 +63,36 @@ impl<'a> NgxStr<'a> {
 
     /// Returns `true` if the [`NgxStr`] is empty, otherwise `false`.
     pub fn is_empty(&self) -> bool {
-        self.0.len == 0
+        self.0.is_empty()
     }
 }
 
-impl From<&str> for NgxStr<'_> {
+impl From<&[u8]> for &NgxStr {
+    fn from(bytes: &[u8]) -> Self {
+        // SAFETY: An `NgxStr` is identical to a `[u8]` slice, given `u_char` is an alias for `u8`.
+        unsafe {
+            &*(bytes as *const [u8] as *const NgxStr)
+        }
+    }
+}
+
+impl From<&str> for &NgxStr {
     fn from(s: &str) -> Self {
-        NgxStr(ngx_str_t { len: s.len(), data: s.as_ptr() as *mut u_char }, PhantomData)
+        s.as_bytes().into()
     }
 }
 
-impl AsRef<[u8]> for NgxStr<'_> {
+impl AsRef<[u8]> for NgxStr {
     fn as_ref(&self) -> &[u8] {
         self.as_bytes()
     }
 }
 
-impl Default for NgxStr<'_> {
+impl Default for &NgxStr {
     fn default() -> Self {
-        NgxStr(ngx_null_string!(), PhantomData)
+        // SAFETY: The null `ngx_str_t` is always a valid Nginx string.
+        unsafe {
+            NgxStr::from_ngx_str(ngx_null_string!())
+        }
     }
 }

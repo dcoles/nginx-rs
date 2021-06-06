@@ -1,9 +1,8 @@
-use crate::bindings::*;
+use crate::{bindings::*, ngx_null_string};
 use crate::core::*;
 
 use crate::http::status::*;
 
-use std::ptr;
 use std::os::raw::c_void;
 
 /// Define a static request handler.
@@ -43,8 +42,8 @@ impl Request {
         unsafe { *(*self.0).loc_conf.add(module.ctx_index) }
     }
 
-    pub fn get_complex_value(&self, cv: &mut ngx_http_complex_value_t) -> Option<NgxStr> {
-        let mut res = ngx_str_t { len: 0, data: ptr::null_mut() };
+    pub fn get_complex_value(&self, cv: &mut ngx_http_complex_value_t) -> Option<&NgxStr> {
+        let mut res = ngx_null_string!();
         unsafe {
             if ngx_http_complex_value(self.0, cv, &mut res) != NGX_OK as ngx_int_t {
                 return None;
@@ -58,7 +57,7 @@ impl Request {
         Status(unsafe { ngx_http_discard_request_body(self.0) })
     }
 
-    pub fn user_agent(&self) -> NgxStr {
+    pub fn user_agent(&self) -> &NgxStr {
         unsafe { NgxStr::from_ngx_str((*(*self.0).headers_in.user_agent).value) }
     }
 
