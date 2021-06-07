@@ -3,6 +3,13 @@ name = "nginx-rs"
 version = "0.1.0"
 authors = ["David Coles <coles.david@gmail.com>"]
 edition = "2018"
+license = "MIT"
+description = "Nginx modules in Rust"
+homepage = "https://github.com/dcoles/nginx-rs"
+repository = "https://github.com/dcoles/nginx-rs"
+readme = "../README.md"
+keywords = ["nginx", "modules"]
+categories = ["api-bindings", "web-programming::http-server"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
