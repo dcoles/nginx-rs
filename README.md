@@ -1,5 +1,8 @@
 # nginx-rs
 
+[![crates.io](https://img.shields.io/crates/v/nginx-rs.svg)](https://crates.io/crates/nginx-rs)
+[![MIT License](https://img.shields.io/crates/l/nginx-rs.svg)](LICENSE)
+
 A framework for writing Nginx modules in pure Rust.
 
 This module is in early stages. It lacks documentation and the API is still quite unstable.
@@ -32,4 +35,4 @@ The resulting `.so` in `target/release` can then be loaded using the
 
 ## Licence
 
-This project is licensed under the terms of the MIT license.
+This project is licensed under the terms of the [MIT license](LICENSE).
