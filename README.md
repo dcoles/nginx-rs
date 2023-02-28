@@ -3,6 +3,10 @@
 [![crates.io](https://img.shields.io/crates/v/nginx-rs.svg)](https://crates.io/crates/nginx-rs)
 [![MIT License](https://img.shields.io/crates/l/nginx-rs.svg)](LICENSE)
 
+> **Note**
+> [Feb 2023] I haven't had a chance to work on this recently, but you might be interested in
+> Cloudflare's blog post [*ROFL with a LOL: rewriting an NGINX module in Rust*](https://blog.cloudflare.com/rust-nginx-module/), which takes some inspiration from this module.
+
 A framework for writing Nginx modules in pure Rust.
 
 This module is in early stages. It lacks documentation and the API is still quite unstable.
