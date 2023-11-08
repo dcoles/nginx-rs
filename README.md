@@ -4,7 +4,11 @@
 [![MIT License](https://img.shields.io/crates/l/nginx-rs.svg)](LICENSE)
 
 > **Note**
-> [Feb 2023] I haven't had a chance to work on this recently, but you might be interested in
+> **[Nov 2023]** Nginx now provides official Rust support with the [`ngx`](https://crates.io/crates/ngx) crate.
+> 
+> See Nginx's blog post [*Extending NGINX with Rust (an Alternative to C)*](https://www.nginx.com/blog/extending-nginx-with-rust-an-alternative-to-c/).
+>
+> **[Feb 2023]** I haven't had a chance to work on this recently, but you might be interested in
 > Cloudflare's blog post [*ROFL with a LOL: rewriting an NGINX module in Rust*](https://blog.cloudflare.com/rust-nginx-module/), which takes some inspiration from this module.
 
 A framework for writing Nginx modules in pure Rust.
